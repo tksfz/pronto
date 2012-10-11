@@ -22,8 +22,17 @@ yo yo yo
         }
     });
     ws.send('message', "hi there"); */
-    chatSocket.onmessage = function(event) { $('#content').append(event.data + "<br/>"); };
-    chatSocket.send('asdfj');
+    chatSocket.onmessage = function(event) { alert('bah'); $('#content').append(event.data + "<br/>"); };
+    setTimeout(function() { chatSocket.send('asdfj') }, 10000);
 </script>
+<!--
+<form>
+    <input id="form" type="text" name="field"/>
+</form>
+<script>
+    $('#form').submit(function() {
+        chatSocket.send($(this).serialize());
+    })
+</script> -->
 
 }

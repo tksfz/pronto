@@ -3,6 +3,8 @@ package controllers
 import play.api._
 import play.api.mvc._
 import play.api.libs.iteratee._
+import play.api.libs.concurrent.Akka
+import play.api.Play.current
 
 object Run extends Controller {
   
@@ -10,10 +12,20 @@ object Run extends Controller {
     Ok(views.html.run())
   }
 
-  def ws = WebSocket.using[String] { request =>
+  def ws = WebSocket.async[String] { request => Akka.future { 
     Logger.info("hey we got a connection")
-    val in = Iteratee.consume[String]()
-    val out = Enumerator("hello")
-    (in, out)
+    val enumerator = Enumerator.imperative[String]()
+    Akka.future {
+      Thread.sleep(3000)
+      enumerator.push("hello")
+    }
+    val iteratee = Iteratee.foreach[String] {
+      event =>
+        Logger.info("we got " + event)
+        enumerator.push(event)
+    }
+    (iteratee, enumerator)
+    }
   }
 }
+
