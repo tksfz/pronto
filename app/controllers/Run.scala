@@ -12,20 +12,59 @@ object Run extends Controller {
     Ok(views.html.run())
   }
 
-  def ws = WebSocket.async[String] { request => Akka.future { 
-    Logger.info("hey we got a connection")
-    val enumerator = Enumerator.imperative[String]()
-    Akka.future {
-      Thread.sleep(3000)
-      enumerator.push("hello")
-    }
-    val iteratee = Iteratee.foreach[String] {
-      event =>
-        Logger.info("we got " + event)
-        enumerator.push(event)
-    }
-    (iteratee, enumerator)
-    }
+  import akka.actor._
+  import akka.pattern.ask
+      
+  import akka.util.duration._
+  import play.api.libs.concurrent._
+  implicit val timeout = akka.util.Timeout(1 second)
+  
+  def wsActor = WebSocket.async[String] {
+    request =>
+      val actor = Akka.system.actorOf(Props[RunActor])
+      val enumerator = Enumerator.imperative[String]()
+      (actor ? Start(enumerator)).asPromise map {
+        case Connected(out) =>
+          val iteratee = Iteratee.foreach[String] {
+            event =>
+              actor ! Message(event)
+          }
+          (iteratee, enumerator)
+      }
   }
 }
 
+import akka.actor._
+import akka.pattern.ask
+
+case class Start(out: PushEnumerator[String])
+case class Message(msg: String)
+case class Connected(out: PushEnumerator[String]) 
+
+object RunActor {
+  lazy val default = {
+    val runActor = Akka.system.actorOf(Props[RunActor])
+    runActor
+  }
+  
+  def join(out: PushEnumerator[String]) = {
+    default ! Start(out)
+    //default ? Start(out)
+    val iteratee = Iteratee.foreach[String] {
+      event =>
+        default ! Message(event)
+    }
+    (iteratee, out)
+  } 
+}
+
+class RunActor extends Actor {
+  var out: PushEnumerator[String] = _
+  
+  override def receive = {
+    case Start(out) => this.out = out
+    case Message(msg) => {
+      this.out.push(msg)
+    }
+  }
+}

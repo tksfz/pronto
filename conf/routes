@@ -11,4 +11,4 @@ GET     /assets/*file               controllers.Assets.at(path="/public", file)
 
 GET     /run                        controllers.Run.index
 
-GET     /ws                         controllers.Run.ws
+GET     /ws                         controllers.Run.wsActor

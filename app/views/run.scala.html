@@ -24,6 +24,9 @@ yo yo yo
     ws.send('message', "hi there"); */
     chatSocket.onmessage = function(event) { alert('bah'); $('#content').append(event.data + "<br/>"); };
     setTimeout(function() { chatSocket.send('asdfj') }, 10000);
+    chatSocket.onopen = function(event) {
+        chatSocket.send("now here we go");
+    };
 </script>
 <!--
 <form>
