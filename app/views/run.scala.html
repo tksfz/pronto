@@ -28,14 +28,15 @@ yo yo yo
         chatSocket.send("now here we go");
     };
 </script>
-<!--
-<form>
-    <input id="form" type="text" name="field"/>
+<form id="form" action="#">
+    <input type="text" name="field"/>
 </form>
 <script>
     $('#form').submit(function() {
+        alert($(this).serialize());
         chatSocket.send($(this).serialize());
+        return false;
     })
-</script> -->
+</script>
 
 }

@@ -59,12 +59,29 @@ object RunActor {
 }
 
 class RunActor extends Actor {
-  var out: PushEnumerator[String] = _
+  private[this] var out: PushEnumerator[String] = _
+  
+  private[this] var script: ProntoScript = _
+  
+  private[this] val futureQueue = new FutureQueue[String]
+  
+  private var first = true
   
   override def receive = {
-    case Start(out) => this.out = out
+    case Start(out) => {
+      this.out = out
+      val out2 = out
+      this.script = new TestScript with WebConsole {
+        val out = out2
+        val in = futureQueue
+        val ctx = context.dispatcher
+      }
+      sender ! Connected(out)
+    }
     case Message(msg) => {
       this.out.push(msg)
+      if (first) this.script.run()
+      first = false
     }
   }
 }
