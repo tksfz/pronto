@@ -1,0 +1,41 @@
+@()
+
+@main("run") {
+
+yo yo yo
+
+<div id="content" class="stdout stderr">
+</div>
+
+<script src="http://jquery-json.googlecode.com/files/jquery.json-2.2.min.js"></script>
+<script src="@routes.Assets.at("javascripts/jquery.websocket-0.0.1.js")" type="text/javascript"></script>
+<script>
+    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
+    var chatSocket = new WS("ws://localhost:9000/ws")
+    /*
+    var ws = $.websocket("ws://localhost:9000/ws", {
+        events: {
+            message: function(event) {
+                alert('hi');
+                $('#content').append(event.data + "<br/>");
+            }
+        }
+    });
+    ws.send('message', "hi there"); */
+    chatSocket.onmessage = function(event) { alert('bah'); $('#content').append(event.data + "<br/>"); };
+    setTimeout(function() { chatSocket.send('asdfj') }, 10000);
+    chatSocket.onopen = function(event) {
+        chatSocket.send("now here we go");
+    };
+</script>
+<!--
+<form>
+    <input id="form" type="text" name="field"/>
+</form>
+<script>
+    $('#form').submit(function() {
+        chatSocket.send($(this).serialize());
+    })
+</script> -->
+
+}
