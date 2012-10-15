@@ -26,15 +26,17 @@ yo yo yo
         $('#content').append(event.data + "<br/>");
         
         // Attach form handler
+        $('.prontoForm').off('submit'); // just a hack for now
         $('.prontoForm').submit(function() {
             chatSocket.send($(this).serialize());
             return false;
         });
     };
     chatSocket.onopen = function(event) {
-        chatSocket.send("now here we go");
+        //chatSocket.send("now here we go");
     };
 </script>
+<!--
 <form id="form" action="#">
     <input type="text" name="name"/>
     <input type="text" name="age"/>
@@ -45,10 +47,6 @@ yo yo yo
         chatSocket.send($(this).serialize());
         return false;
     });
-    $('.prontoForm').submit(function() {
-        chatSocket.send($(this).serialize());
-        return false;
-    });
-</script>
+</script> -->
 
 }

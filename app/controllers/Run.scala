@@ -22,14 +22,13 @@ object Run extends Controller {
   def wsActor = WebSocket.async[String] {
     request =>
       val actor = Akka.system.actorOf(Props[RunActor])
-      val enumerator = Enumerator.imperative[String]()
-      (actor ? Start(enumerator)).asPromise map {
+      (actor ? Start()).asPromise map {
         case Connected(out) =>
           val iteratee = Iteratee.foreach[String] {
             event =>
               actor ! Message(event)
           }
-          (iteratee, enumerator)
+          (iteratee, out)
       }
   }
 }
@@ -37,7 +36,7 @@ object Run extends Controller {
 import akka.actor._
 import akka.pattern.ask
 
-case class Start(out: PushEnumerator[String])
+case class Start()
 case class Message(msg: String)
 case class Connected(out: PushEnumerator[String]) 
 
@@ -48,7 +47,7 @@ object RunActor {
   }
   
   def join(out: PushEnumerator[String]) = {
-    default ! Start(out)
+    default ! Start()
     //default ? Start(out)
     val iteratee = Iteratee.foreach[String] {
       event =>
@@ -68,28 +67,20 @@ class RunActor extends Actor {
   private var first = true
   
   override def receive = {
-    case Start(out) => {
-      this.out = out
-      val out2 = out
+    case Start() => {
+      val enumerator = Enumerator.imperative[String](
+          onStart = { this.script.run() })
+      this.out = enumerator
       this.script = new TestScript with WebConsole {
-        override val out = out2
+        override val out = enumerator
         override val in = futureQueue
         override val executionContext = context.dispatcher
       }
-      sender ! Connected(out)
+      sender ! Connected(enumerator)
     }
     case Message(msg) => {
       this.out.push(msg)
       this.futureQueue.put(msg)(context.dispatcher)
-      if (first) {
-        Logger.info("launching script")
-        Akka.future {
-          // Do this asynchronously in case the script blocks
-          this.script.run()
-        }
-        Logger.info("returning from script launch")
-      }
-      first = false
     }
   }
 }

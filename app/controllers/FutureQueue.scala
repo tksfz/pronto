@@ -3,6 +3,7 @@ package controllers
 import akka.dispatch.Future
 import scala.actors.threadpool.LinkedBlockingQueue
 import akka.dispatch.Promise
+import play.api.Logger
 
 class FutureQueue[T] {
   
@@ -16,10 +17,12 @@ class FutureQueue[T] {
     lock.synchronized {
       var next = puts.poll
       if (next == null) {
+        Logger.debug("saving get")
         val prom = Promise[T]()
         this.gets.put(prom)
         prom
       } else {
+        Logger.debug("popping saved msg " + next)
         Promise.successful(next)
       }
     }
@@ -29,10 +32,12 @@ class FutureQueue[T] {
     lock.synchronized {
       var waitingGet = gets.poll
       if (waitingGet != null) {
+        Logger.debug("filling msg")
         Future.flow {
             waitingGet << msg
         }
       } else {
+        Logger.debug("saving msg")
         puts.put(msg)
       }
     }

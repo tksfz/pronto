@@ -27,13 +27,11 @@ trait AkkaProntoScript extends ProntoScript {
     
   def run() = {
     Future.flow {
-      try {
-        script()
-      } catch {
-        case e: Exception =>
-          Logger.error("error while running script", e)
-          println(e.getStackTraceString)
-      }
+      script()
+    } onFailure {
+      case x: Exception =>
+        Logger.error("outer error", x)
+        println(x.getStackTraceString)
     }
   }
     
@@ -117,15 +115,14 @@ abstract class TestScript extends AkkaProntoScript with WebConsole with DefaultB
   override def script = {
     while(true) {
       println("hello world from the script")
-      var x = read[String]()
-      println("script got " + x)
+      var x = null
       
-      x = read[String]()
       val form2 = Form(tuple("name" -> text, "age" -> number))
       val prontoForm = form {
         inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
       }
       println(prontoForm.toString)
+      println("trying to read form")
       val (name, age) = readForm(form2)()
       println("<b>we</b> got name = " + name + " and age = " + age)
     }
@@ -137,6 +134,10 @@ sealed abstract class CustomOutputStyle
 case class Sidebar(height: Int) extends CustomOutputStyle
 case class North(width: Int) extends CustomOutputStyle
 case class South(width: Int) extends CustomOutputStyle
+// debug window?
+// seems like debug msgs should be inline
+// instead there should be separate windows that have their own interaction threads
+// and certainly there should be asynchrony mechanisms that allow inter-communication among different threads / windows
 
 sealed abstract class OutputTarget2
 case object Stdout2 extends OutputTarget2
