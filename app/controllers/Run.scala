@@ -72,9 +72,9 @@ class RunActor extends Actor {
       this.out = out
       val out2 = out
       this.script = new TestScript with WebConsole {
-        val out = out2
-        val in = futureQueue
-        val ctx = context.dispatcher
+        override val out = out2
+        override val in = futureQueue
+        override val executionContext = context.dispatcher
       }
       sender ! Connected(out)
     }

@@ -2,15 +2,43 @@ package controllers
 
 import play.api.libs.iteratee._
 import akka.dispatch.Future
+import akka.dispatch.Future
+import play.api.data._
+import play.api.data.Forms._
+import play.core.parsers.FormUrlEncodedParser
+import play.api.Logger
+import scala.util.continuations.cps
+import play.api.templates.Html
+import play.api.mvc.Call
 
 trait ProntoScript {
   self: ConsoleLike =>
-
+    
   // TODO: trickery to make the body of the class the script itself
-  def run(): Any // Any allows CPS and then caller can handle the CPS etc call this script
+  // Any allows CPS and then caller can handle the CPS etc call this script
   // or do an abstract type member and let run return that for a particular subtrait?
-  
+  def run() 
 }
+
+trait AkkaProntoScript extends ProntoScript {
+  self: ConsoleLike =>
+    
+  implicit def executionContext: akka.dispatch.ExecutionContext
+    
+  def run() = {
+    Future.flow {
+      try {
+        script()
+      } catch {
+        case e: Exception =>
+          Logger.error("error while running script", e)
+          println(e.getStackTraceString)
+      }
+    }
+  }
+    
+  def script(): Any @cps[Future[Any]] 
+} 
 
 trait ConsoleLike {
   type OutputTarget
@@ -25,7 +53,6 @@ trait ConsoleLike {
 }
 
 trait WebConsole extends ConsoleLike {
-  self: ProntoScript =>
     
   type OutputTarget = String
   
@@ -35,7 +62,7 @@ trait WebConsole extends ConsoleLike {
   
   def in: FutureQueue[String]
   
-  implicit def ctx: akka.dispatch.ExecutionContext
+  implicit def executionContext: akka.dispatch.ExecutionContext
     
   override def println(target: OutputTarget, str: String) {
     out.push(str)
@@ -50,8 +77,72 @@ trait WebConsole extends ConsoleLike {
     }
   }
   
+  def readForm[A](form: Form[A]): Future[A] = {
+    read[String] map { x =>
+      form.bind(FormUrlEncodedParser.parse(x, "utf-8").mapValues(_.headOption.getOrElse(""))).get
+    }
+  }
+  
   //def createWindow// ?
 }
+
+trait FormOutputter {
+  //def formToHtml(form: Form[_]): Html
+}
+
+trait FormReader {
+  
+}
+
+trait FormPrompter extends FormOutputter with FormReader
+
+trait DefaultBootstrapFormPrompter extends FormPrompter {
+  import views.html.helper
+  import views.html.helper.twitterBootstrap._
+  
+  def formToHtml2(form: Form[_]) = {
+    views.html.helper.form(action = Call("GET", "#")) {
+      null//form.mapping.mappings.map { mapping => mapping. }
+    }
+  }
+  
+  def form(body: Html) = helper.form(Call("GET", "#"), 'class -> "prontoForm") { body + Html(<input type="submit"/>.toString)}
+  
+  def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
+  
+}
+
+abstract class TestScript extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
+  
+  override def script = {
+    while(true) {
+      println("hello world from the script")
+      var x = read[String]()
+      println("script got " + x)
+      
+      x = read[String]()
+      val form2 = Form(tuple("name" -> text, "age" -> number))
+      val prontoForm = form {
+        inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
+      }
+      println(prontoForm.toString)
+      val (name, age) = readForm(form2)()
+      println("<b>we</b> got name = " + name + " and age = " + age)
+    }
+  }
+}
+
+// experimental stuff
+sealed abstract class CustomOutputStyle
+case class Sidebar(height: Int) extends CustomOutputStyle
+case class North(width: Int) extends CustomOutputStyle
+case class South(width: Int) extends CustomOutputStyle
+
+sealed abstract class OutputTarget2
+case object Stdout2 extends OutputTarget2
+case object StdinPrompt2 extends OutputTarget2
+case object Stderr2 extends OutputTarget2
+case class Custom(name: String) extends OutputTarget2
 
 sealed abstract class TextOutputTargets
 case object Stdout extends TextOutputTargets
@@ -61,18 +152,3 @@ class TextConsole {
   type OutputTarget = TextOutputTargets
 }
 
-import akka.dispatch.Future
-
-abstract class TestScript extends ProntoScript {
-  self: WebConsole =>
-    
-  override def run = {
-    Future.flow {
-      while(true) {
-        println("hello world from the script")
-        val x = read[String]()
-        println("script got " + x)
-      }
-    }
-  }
-}

@@ -22,21 +22,33 @@ yo yo yo
         }
     });
     ws.send('message', "hi there"); */
-    chatSocket.onmessage = function(event) { $('#content').append(event.data + "<br/>"); };
-    setTimeout(function() { chatSocket.send('asdfj') }, 10000);
+    chatSocket.onmessage = function(event) {
+        $('#content').append(event.data + "<br/>");
+        
+        // Attach form handler
+        $('.prontoForm').submit(function() {
+            chatSocket.send($(this).serialize());
+            return false;
+        });
+    };
     chatSocket.onopen = function(event) {
         chatSocket.send("now here we go");
     };
 </script>
 <form id="form" action="#">
-    <input type="text" name="field"/>
+    <input type="text" name="name"/>
+    <input type="text" name="age"/>
+    <input type="submit"/>
 </form>
 <script>
     $('#form').submit(function() {
-        alert($(this).serialize());
         chatSocket.send($(this).serialize());
         return false;
-    })
+    });
+    $('.prontoForm').submit(function() {
+        chatSocket.send($(this).serialize());
+        return false;
+    });
 </script>
 
 }
