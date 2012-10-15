@@ -80,7 +80,15 @@ class RunActor extends Actor {
     }
     case Message(msg) => {
       this.out.push(msg)
-      if (first) this.script.run()
+      this.futureQueue.put(msg)(context.dispatcher)
+      if (first) {
+        Logger.info("launching script")
+        Akka.future {
+          // Do this asynchronously in case the script blocks
+          this.script.run()
+        }
+        Logger.info("returning from script launch")
+      }
       first = false
     }
   }

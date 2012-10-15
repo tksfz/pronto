@@ -9,25 +9,32 @@ class FutureQueue[T] {
   private[this] val puts = new LinkedBlockingQueue[T]()
   
   private[this] val gets = new LinkedBlockingQueue[Promise[T]]()
+  
+  private[this] val lock = new Object
 
   def getNextFuture(implicit context: akka.dispatch.ExecutionContext): Future[T] = {
-    var next = puts.poll
-    if (next == null) {
-      val prom = Promise[T]()
-      prom.future
-    } else {
-      Future(next)
+    lock.synchronized {
+      var next = puts.poll
+      if (next == null) {
+        val prom = Promise[T]()
+        this.gets.put(prom)
+        prom
+      } else {
+        Promise.successful(next)
+      }
     }
   }
   
   def put(msg: T)(implicit context: akka.dispatch.ExecutionContext) = {
-    var waitingGet = gets.poll
-    if (waitingGet != null) {
-      Future.flow {
-          waitingGet << msg
+    lock.synchronized {
+      var waitingGet = gets.poll
+      if (waitingGet != null) {
+        Future.flow {
+            waitingGet << msg
+        }
+      } else {
+        puts.put(msg)
       }
-    } else {
-      puts.put(msg)
     }
   }
 }

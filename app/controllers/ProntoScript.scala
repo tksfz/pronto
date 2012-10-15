@@ -1,14 +1,14 @@
 package controllers
 
 import play.api.libs.iteratee._
-import play.api.libs.concurrent._
 import akka.dispatch.Future
 
 trait ProntoScript {
   self: ConsoleLike =>
 
   // TODO: trickery to make the body of the class the script itself
-  def run()
+  def run(): Any // Any allows CPS and then caller can handle the CPS etc call this script
+  // or do an abstract type member and let run return that for a particular subtrait?
   
 }
 
@@ -25,6 +25,8 @@ trait ConsoleLike {
 }
 
 trait WebConsole extends ConsoleLike {
+  self: ProntoScript =>
+    
   type OutputTarget = String
   
   val StdoutTarget = "stdout"
@@ -39,7 +41,7 @@ trait WebConsole extends ConsoleLike {
     out.push(str)
   }
   
-  def read[A] = {
+  override def read[A] = {
     val future = in.getNextFuture
     // convert string or whatever to A
     future map {
@@ -59,10 +61,18 @@ class TextConsole {
   type OutputTarget = TextOutputTargets
 }
 
-class TestScript extends ProntoScript {
-  self: ConsoleLike =>
+import akka.dispatch.Future
+
+abstract class TestScript extends ProntoScript {
+  self: WebConsole =>
     
-  def run {
-    println("hello world from the script")
+  override def run = {
+    Future.flow {
+      while(true) {
+        println("hello world from the script")
+        val x = read[String]()
+        println("script got " + x)
+      }
+    }
   }
 }

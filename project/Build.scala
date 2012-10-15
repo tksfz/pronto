@@ -13,6 +13,9 @@ object ApplicationBuild extends Build {
 
     val main = PlayProject(appName, appVersion, appDependencies, mainLang = SCALA).settings(
       // Add your own project settings here      
+      autoCompilerPlugins := true,
+      addCompilerPlugin("org.scala-lang.plugins" % "continuations" % "2.9.1"),
+      scalacOptions += "-P:continuations:enable"
     )
 
 }
