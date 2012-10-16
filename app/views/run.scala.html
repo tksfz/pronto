@@ -23,7 +23,8 @@ yo yo yo
     });
     ws.send('message', "hi there"); */
     chatSocket.onmessage = function(event) {
-        $('#content').append(event.data + "<br/>");
+        var json = jQuery.parseJSON(event.data);
+        $('#content').append(json.html + "<br/>");
         
         // Attach form handler
         $('.prontoForm').off('submit'); // just a hack for now

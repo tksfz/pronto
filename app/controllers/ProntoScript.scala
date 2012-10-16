@@ -10,6 +10,7 @@ import play.api.Logger
 import scala.util.continuations.cps
 import play.api.templates.Html
 import play.api.mvc.Call
+import play.api.libs.json.Json
 
 trait ProntoScript {
   self: ConsoleLike =>
@@ -63,7 +64,8 @@ trait WebConsole extends ConsoleLike {
   implicit def executionContext: akka.dispatch.ExecutionContext
     
   override def println(target: OutputTarget, str: String) {
-    out.push(str)
+    val json = Json.toJson(Map("html" -> str))
+    out.push(Json.stringify(json))
   }
   
   override def read[A] = {
@@ -76,6 +78,8 @@ trait WebConsole extends ConsoleLike {
   }
   
   def readForm[A](form: Form[A]): Future[A] = {
+    // TOOD: errors especially parse errors should just become form errors that the user can re-do
+    // rather than failing out the whole script
     read[String] map { x =>
       form.bind(FormUrlEncodedParser.parse(x, "utf-8").mapValues(_.headOption.getOrElse(""))).get
     }
@@ -108,9 +112,12 @@ trait DefaultBootstrapFormPrompter extends FormPrompter {
   
   def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
   
+  def printWindow(id: String) = {
+    println("<div id='" + id + "' class='span6'</div>")
+  }
 }
 
-abstract class TestScript extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
+trait TestScript extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
   
   override def script = {
     while(true) {
@@ -126,6 +133,12 @@ abstract class TestScript extends AkkaProntoScript with WebConsole with DefaultB
       val (name, age) = readForm(form2)()
       println("<b>we</b> got name = " + name + " and age = " + age)
     }
+  }
+}
+
+trait TestScript2 extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
+  override def script = {
+    
   }
 }
 
