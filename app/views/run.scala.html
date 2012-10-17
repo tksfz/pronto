@@ -2,9 +2,20 @@
 
 @main("run") {
 
+<style type="text/css">
+.box {
+    position: relative;
+    margin: 15px 0px;
+    padding: 39px 19px 14px;
+    background-color: rgb(255, 255, 255);
+    border: 1px solid rgb(221, 221, 221);
+    border-radius: 4px 4px 4px 4px;
+}
+</style>
+
 yo yo yo
 
-<div id="content" class="stdout stderr">
+<div id="stdout" class="stdout">
 </div>
 
 <script src="http://jquery-json.googlecode.com/files/jquery.json-2.2.min.js"></script>
@@ -24,7 +35,8 @@ yo yo yo
     ws.send('message', "hi there"); */
     chatSocket.onmessage = function(event) {
         var json = jQuery.parseJSON(event.data);
-        $('#content').append(json.html + "<br/>");
+        if (!json.target) json.target = "stdout"
+        $('#' + json.target).append(json.html + "<br/>");
         
         // Attach form handler
         $('.prontoForm').off('submit'); // just a hack for now

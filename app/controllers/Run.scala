@@ -71,7 +71,7 @@ class RunActor extends Actor {
       val enumerator = Enumerator.imperative[String](
           onStart = { this.script.run() })
       this.out = enumerator
-      this.script = new TestScript with WebConsole {
+      this.script = new TestScript2 with WebConsole {
         override val out = enumerator
         override val in = futureQueue
         override val executionContext = context.dispatcher

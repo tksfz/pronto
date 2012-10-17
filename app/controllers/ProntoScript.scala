@@ -16,8 +16,6 @@ trait ProntoScript {
   self: ConsoleLike =>
     
   // TODO: trickery to make the body of the class the script itself
-  // Any allows CPS and then caller can handle the CPS etc call this script
-  // or do an abstract type member and let run return that for a particular subtrait?
   def run() 
 }
 
@@ -62,9 +60,18 @@ trait WebConsole extends ConsoleLike {
   def in: FutureQueue[String]
   
   implicit def executionContext: akka.dispatch.ExecutionContext
-    
-  override def println(target: OutputTarget, str: String) {
-    val json = Json.toJson(Map("html" -> str))
+  
+  def printTo(target: String, str: String) {
+    val json = Json.toJson(Map(("target" )-> target, ("html" )-> str))
+      out.push(Json.stringify(json))
+  }
+
+  def print(str: String) {
+    printTo(StdoutTarget, str)
+  }
+
+  override def println(target: String, str: String) {
+    val json = Json.toJson(Map("target" -> target, "html" -> str))
     out.push(Json.stringify(json))
   }
   
@@ -85,6 +92,24 @@ trait WebConsole extends ConsoleLike {
     }
   }
   
+  /**
+   * Prompt shows a form, waits for input, validates the result, re-shows with errors if necessary
+   * until the input is valid
+   * optional target
+   */
+  def promptTo[A](target: OutputTarget, form: Form[A])(html: Form[A] => Html): Future[A] = {
+    printTo(target, html(form).toString)
+    read[String] flatMap { formData =>
+      val formResult = form.bind(FormUrlEncodedParser.parse(formData, "utf-8").mapValues(_.headOption.getOrElse("")))
+      if (formResult.hasErrors || formResult.hasGlobalErrors) {
+        // TODO: clear - replace div or just replace form content?
+        promptTo(target, formResult)(html)
+      } else {
+        Future(formResult.get)
+      }
+    }
+  }
+  
   //def createWindow// ?
 }
 
@@ -99,6 +124,8 @@ trait FormReader {
 trait FormPrompter extends FormOutputter with FormReader
 
 trait DefaultBootstrapFormPrompter extends FormPrompter {
+  self: ConsoleLike =>
+    
   import views.html.helper
   import views.html.helper.twitterBootstrap._
   
@@ -112,8 +139,30 @@ trait DefaultBootstrapFormPrompter extends FormPrompter {
   
   def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
   
+  def tag(tagName: String, args: (Symbol, String)*)(body: Html) = {
+    Html("<" + tagName + " " + argsToAttributes(args: _*) + ">") + body + Html("</" + tagName+ ">")
+  }
+  
+  def div(args: (Symbol, String)*)(body: Html) = {
+    tag("div", args: _*)(body)
+  }
+  
+  def row(body: Html) = Html("<div class='row'>" + body.toString + "</div>")
+  
+  def span(args: (Symbol, String)*)(body: Html = Html("")): Html = {
+    Html("<span " + argsToAttributes(args: _*) + ">") + body + Html("</span>")
+  }
+  
+  def span_(args: (Symbol, String)*): Html = {
+    span(args: _*)()
+  }
+  
+  def argsToAttributes(args: (Symbol, String)*): String = {
+    args.foldLeft("") { (str, arg) => str + " " + arg._1.name + "='" + arg._2 + "'"}
+  }
+  
   def printWindow(id: String) = {
-    println("<div id='" + id + "' class='span6'</div>")
+    println("<div id='" + id + "' class='span6'></div>")
   }
 }
 
@@ -137,8 +186,39 @@ trait TestScript extends AkkaProntoScript with WebConsole with DefaultBootstrapF
 }
 
 trait TestScript2 extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
+  // we want auto-scrolling to bottom
   override def script = {
+    print(div('class -> "container") { row {
+      span('id -> "left", 'class -> "span4 box", 'style -> "height: 200px")() +
+      span('id -> "right", 'class -> "span6 box", 'style -> "height: 200px; overflow: auto")()
+    } }.toString)
+
+    val form2 = Form(tuple("name" -> text, "age" -> number))
+    val prontoForm = form {
+      inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
+    }
+    //println("left", prontoForm.toString)
+    println("right", "here are some instructions")
+    promptTo("left", form2) { form3 =>
+        val prontoForm = form {
+          inputText(form3("name")) + inputText(form3("age"), '_showConstraints -> false)
+        }
+        Html(prontoForm.toString)
+    }
     
+    while(true) {
+    val(name, age) = readForm(form2)()
+    
+    println("right", "<b>we</b> got name = " + name + " and age = " + age)
+    }
+
+    /*
+    Future.flow {
+      
+    }
+    Future.flow {
+      
+    } */
   }
 }
 
