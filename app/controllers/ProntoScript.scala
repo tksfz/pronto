@@ -12,6 +12,7 @@ import play.api.templates.Html
 import play.api.mvc.Call
 import play.api.libs.json.Json
 import akka.dispatch.Promise
+import play.api.templates.HtmlFormat
 
 trait ProntoScript {
   self: ConsoleLike =>
@@ -41,11 +42,11 @@ trait AkkaProntoScript extends ProntoScript {
 trait ConsoleLike {
   type OutputTarget
   
-  val StdoutTarget: OutputTarget
+  val Stdout: OutputTarget
   
   def println(target: OutputTarget, str: String): Unit
   
-  def println(str: String): Any = { println(StdoutTarget, str); 5 }
+  def println(str: String): Any = { println(Stdout, str); 5 }
   
   def read[A]: Future[A]
 }
@@ -54,7 +55,7 @@ trait WebConsole extends ConsoleLike {
     
   type OutputTarget = String
   
-  val StdoutTarget = "stdout"
+  override val Stdout = "stdout"
     
   def out: PushEnumerator[String]
   
@@ -68,10 +69,35 @@ trait WebConsole extends ConsoleLike {
   }
 
   def print(str: String) {
-    printTo(StdoutTarget, str)
+    printTo(Stdout, str)
+  }
+  
+  def print(html: Html) {
+    print(Stdout, html)
+  }
+  
+  override def println(str: String) {
+    println(Stdout, str)
   }
 
   override def println(target: String, str: String) {
+    println2(target, str)
+  }
+  
+  def println2(target: String, str: String) {
+    val html = HtmlFormat.escape(str)
+    println(target, html)
+  }
+  
+  def println(target: String, html: Html) {
+    print(target, html + Html("<br/>"))
+  }
+  
+  def print(target: String, html: Html) {
+    printraw(target, html.toString)
+  }
+  
+  def printraw(target: String, str: String) {
     val json = Json.toJson(Map("target" -> target, "html" -> str))
     out.push(Json.stringify(json))
   }
@@ -211,6 +237,10 @@ trait HtmlHelper {
   def prontobutton(args: (Symbol, String)*)(body: Html): Html = {
     button(addProntoClass(args): _*)(body)
   }
+  
+  def htmlescape(str: String): Html = {
+    HtmlFormat.escape(str)
+  }
 }
 
 trait BootstrapHtmlHelper extends HtmlHelper {
@@ -250,38 +280,30 @@ trait TestScript2 extends AkkaProntoScript with WebConsole with BootstrapHtmlHel
     print(div('class -> "container") { row {
       span('id -> "left", 'class -> "span4 box", 'style -> "height: 200px")() +
       span('id -> "right", 'class -> "span6 box", 'style -> "height: 200px; overflow: auto")()
-    } }.toString)
+    } })
 
     val form2 = Form(tuple("name" -> text, "age" -> number))
-    val prontoForm = prontoform() {
-      inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
-    }
     
-    // buttons and links
-    
-    //println("left", prontoForm.toString)
     println("right", "here are some instructions")
     val (name, age) = promptTo("left", form2) { form3 =>
-        val prontoForm = prontoform() {
+        prontoform() {
           inputText(form3("name")) + inputText(form3("age"), '_showConstraints -> false)
         }
-        Html(prontoForm.toString)
     }()
     
-    println("right", "<b>we</b> got name = " + name + " and age = " + age)
+    println("right", Html("<b>we</b> got name = ") + htmlescape(name) + Html(" and age = " + age))
     println("right", "to continue click the button:")
-    println("right", prontobutton() { Html("Hit Me!") }.toString)
-    
+    println("right", prontobutton() { Html("Hit Me!") })
+   
+    // We need to distinguish buttons using both readClick("thisbutton") or whichButton = readClick
     readClick()()
     
     println("right", "alright now we're rolling")
+  }
+}
 
-    /*
-    Future.flow {
-      
-    }
-    Future.flow {
-      
-    } */
+trait SimplePoll extends AkkaProntoScript with WebConsole with BootstrapHtmlHelper {
+  override def script = {
+    
   }
 }
