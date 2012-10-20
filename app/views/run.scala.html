@@ -33,21 +33,29 @@ yo yo yo
         }
     });
     ws.send('message', "hi there"); */
+    
     chatSocket.onmessage = function(event) {
         var json = jQuery.parseJSON(event.data);
-        if (!json.target) json.target = "stdout"
-        $('#' + json.target).append(json.html + "<br/>");
-        
-        // Attach form handler
-        $('.prontoForm').off('submit'); // just a hack for now
-        $('.prontoForm').submit(function() {
-            chatSocket.send($(this).serialize());
-            return false;
-        });
+        if (!json.target) json.target = "stdout";
+        $('#' + json.target).append(json.html);
     };
     chatSocket.onopen = function(event) {
         //chatSocket.send("now here we go");
     };
+    
+    var prontoListener = function(event) {
+        var message = {
+            target: event.target.id,
+            type: event.target.tagName,
+            event: event.type,
+            data: $(this).serialize()
+        };
+        chatSocket.send($.toJSON(message));
+        return false;
+    };
+    
+    $('#stdout').on("submit", ".prontoInput", prontoListener);
+    $('#stdout').on("click", ":not(form).prontoInput", prontoListener);
 </script>
 <!--
 <form id="form" action="#">

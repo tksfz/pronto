@@ -11,6 +11,7 @@ import scala.util.continuations.cps
 import play.api.templates.Html
 import play.api.mvc.Call
 import play.api.libs.json.Json
+import akka.dispatch.Promise
 
 trait ProntoScript {
   self: ConsoleLike =>
@@ -90,8 +91,25 @@ trait WebConsole extends ConsoleLike {
   def readForm[A](form: Form[A]): Future[A] = {
     // TOOD: errors especially parse errors should just become form errors that the user can re-do
     // rather than failing out the whole script
-    read[String] map { x =>
+    read[String] map { socketMessage =>
+      val x = getFormData(socketMessage)
       form.bind(FormUrlEncodedParser.parse(x, "utf-8").mapValues(_.headOption.getOrElse(""))).get
+    }
+  }
+  
+  /**
+   * This is the equivalent to something like a "readLine()" call - just wait for the user
+   * to hit Enter or in this case click a button.
+   */
+  def readClick(/*elementId: String*/): Future[Unit] = {
+    // TODO: make this read[JsValue] using the implicit formatter nice
+    read[String] flatMap { socketMessage =>
+      val socketMsgJson = Json.parse(socketMessage)
+      if ((socketMsgJson \ "event").as[String] == "click") {
+        Promise.successful(())
+      } else {
+        readClick()
+      }
     }
   }
   
@@ -102,7 +120,11 @@ trait WebConsole extends ConsoleLike {
    */
   def promptTo[A](target: OutputTarget, form: Form[A])(html: Form[A] => Html): Future[A] = {
     printTo(target, html(form).toString)
-    read[String] flatMap { formData =>
+    read[String] flatMap { socketMessage =>
+      Logger.info(socketMessage)
+      val socketMessageJson = Json.parse(socketMessage)
+      val formData = (socketMessageJson \ "data").as[String]
+      Logger.info(formData)
       val formResult = form.bind(FormUrlEncodedParser.parse(formData, "utf-8").mapValues(_.headOption.getOrElse("")))
       if (formResult.hasErrors || formResult.hasGlobalErrors) {
         // TODO: clear - replace div or just replace form content?
@@ -113,7 +135,11 @@ trait WebConsole extends ConsoleLike {
     }
   }
   
-  //def createWindow// ?
+  private[this] def getFormData(socketMessage: String) = {
+    val socketMessageJson = Json.parse(socketMessage)
+    val formData = (socketMessageJson \ "data").as[String]
+    formData
+  }
 }
 
 /**
@@ -122,16 +148,25 @@ trait WebConsole extends ConsoleLike {
  * 
  * These methods all return Play's Html type.  We also re-use some existing html helpers provided
  * by Play.
+ * 
+ * prontoform
+ * prontobutton
+ * 
+ * By default, forms and buttons automatically have markup added that tells Pronto to propagate
+ * submit and click events, respectively, back to the server.  To suppress this behavior use the
+ * alternate forms "plainform" and "plainbutton"
+ * 
+ * prontoanchor
  */
 trait HtmlHelper {
     
   import views.html.helper
   
-  def form(body: Html) = helper.form(Call("GET", "#"), 'class -> "prontoForm") { body + Html(<input type="submit"/>.toString)}
+  def form(args: (Symbol, String)*)(body: Html) = helper.form(Call("GET", "#"), args: _*) { body + Html(<input type="submit"/>.toString)}
   
   def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
   
-  private[this] def tag(tagName: String, args: (Symbol, String)*)(body: Html) = {
+  private[this] def tag(tagName: String, args: (Symbol, String)*)(body: Html = Html("")) = {
     Html("<" + tagName + " " + argsToAttributes(args: _*) + ">") + body + Html("</" + tagName+ ">")
   }
   
@@ -151,8 +186,30 @@ trait HtmlHelper {
     args.foldLeft("") { (str, arg) => str + " " + arg._1.name + "='" + arg._2 + "'"}
   }
   
-  def printWindow(id: String) = {
-    println("<div id='" + id + "' class='span6'></div>")
+  def button(args: (Symbol, String)*)(html: Html) = {
+    tag("button", args: _*)(html)
+  }
+  
+  val PRONTO_CLASS = "prontoInput"
+  
+  def prontoform(args: (Symbol, String)*)(body: Html): Html = {
+    form(addProntoClass(args): _*)(body)
+  }
+  
+  private[this] def addProntoClass(args: Seq[(Symbol, String)]) = {
+    var needsClass = true
+    val newargs = args map { elem =>
+      if (elem._1 == 'class) {
+        needsClass = false
+        (elem._1 -> (PRONTO_CLASS + " " + elem._2))
+      } else
+        elem
+    }
+    if (needsClass) newargs :+ ('class -> PRONTO_CLASS) else newargs
+  }
+  
+  def prontobutton(args: (Symbol, String)*)(body: Html): Html = {
+    button(addProntoClass(args): _*)(body)
   }
 }
 
@@ -176,7 +233,7 @@ trait TestScript extends AkkaProntoScript with WebConsole with HtmlHelper {
       var x = null
       
       val form2 = Form(tuple("name" -> text, "age" -> number))
-      val prontoForm = form {
+      val prontoForm = form('id -> "myform") {
         inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
       }
       println(prontoForm.toString)
@@ -196,7 +253,7 @@ trait TestScript2 extends AkkaProntoScript with WebConsole with BootstrapHtmlHel
     } }.toString)
 
     val form2 = Form(tuple("name" -> text, "age" -> number))
-    val prontoForm = form {
+    val prontoForm = prontoform() {
       inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
     }
     
@@ -204,18 +261,20 @@ trait TestScript2 extends AkkaProntoScript with WebConsole with BootstrapHtmlHel
     
     //println("left", prontoForm.toString)
     println("right", "here are some instructions")
-    promptTo("left", form2) { form3 =>
-        val prontoForm = form {
+    val (name, age) = promptTo("left", form2) { form3 =>
+        val prontoForm = prontoform() {
           inputText(form3("name")) + inputText(form3("age"), '_showConstraints -> false)
         }
         Html(prontoForm.toString)
-    }
-    
-    while(true) {
-    val(name, age) = readForm(form2)()
+    }()
     
     println("right", "<b>we</b> got name = " + name + " and age = " + age)
-    }
+    println("right", "to continue click the button:")
+    println("right", prontobutton() { Html("Hit Me!") }.toString)
+    
+    readClick()()
+    
+    println("right", "alright now we're rolling")
 
     /*
     Future.flow {
