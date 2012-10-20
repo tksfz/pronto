@@ -84,6 +84,9 @@ trait WebConsole extends ConsoleLike {
     }
   }
   
+  // TODO: just as we have multiple output channels identified by div id
+  // we should have multiple input channels identified by form id
+  // could we also use iteratees there?
   def readForm[A](form: Form[A]): Future[A] = {
     // TOOD: errors especially parse errors should just become form errors that the user can re-do
     // rather than failing out the whole script
@@ -113,41 +116,28 @@ trait WebConsole extends ConsoleLike {
   //def createWindow// ?
 }
 
-trait FormOutputter {
-  //def formToHtml(form: Form[_]): Html
-}
-
-trait FormReader {
-  
-}
-
-trait FormPrompter extends FormOutputter with FormReader
-
-trait DefaultBootstrapFormPrompter extends FormPrompter {
-  self: ConsoleLike =>
+/**
+ * Helper methods to generate HTML from code.  Scripts won't generally use views.  Instead
+ * they'll use an imperative style where they simply print HTML.
+ * 
+ * These methods all return Play's Html type.  We also re-use some existing html helpers provided
+ * by Play.
+ */
+trait HtmlHelper {
     
   import views.html.helper
-  import views.html.helper.twitterBootstrap._
-  
-  def formToHtml2(form: Form[_]) = {
-    views.html.helper.form(action = Call("GET", "#")) {
-      null//form.mapping.mappings.map { mapping => mapping. }
-    }
-  }
   
   def form(body: Html) = helper.form(Call("GET", "#"), 'class -> "prontoForm") { body + Html(<input type="submit"/>.toString)}
   
   def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
   
-  def tag(tagName: String, args: (Symbol, String)*)(body: Html) = {
+  private[this] def tag(tagName: String, args: (Symbol, String)*)(body: Html) = {
     Html("<" + tagName + " " + argsToAttributes(args: _*) + ">") + body + Html("</" + tagName+ ">")
   }
   
   def div(args: (Symbol, String)*)(body: Html) = {
     tag("div", args: _*)(body)
   }
-  
-  def row(body: Html) = Html("<div class='row'>" + body.toString + "</div>")
   
   def span(args: (Symbol, String)*)(body: Html = Html("")): Html = {
     Html("<span " + argsToAttributes(args: _*) + ">") + body + Html("</span>")
@@ -166,7 +156,19 @@ trait DefaultBootstrapFormPrompter extends FormPrompter {
   }
 }
 
-trait TestScript extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
+trait BootstrapHtmlHelper extends HtmlHelper {
+  def row(body: Html) = Html("<div class='row'>" + body.toString + "</div>")
+  
+  import views.html.helper.twitterBootstrap._
+
+  import views.html.helper
+  
+  // use bootstrap typeclass
+  override def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
+  
+}
+
+trait TestScript extends AkkaProntoScript with WebConsole with HtmlHelper {
   
   override def script = {
     while(true) {
@@ -185,7 +187,7 @@ trait TestScript extends AkkaProntoScript with WebConsole with DefaultBootstrapF
   }
 }
 
-trait TestScript2 extends AkkaProntoScript with WebConsole with DefaultBootstrapFormPrompter {
+trait TestScript2 extends AkkaProntoScript with WebConsole with BootstrapHtmlHelper {
   // we want auto-scrolling to bottom
   override def script = {
     print(div('class -> "container") { row {
@@ -197,6 +199,9 @@ trait TestScript2 extends AkkaProntoScript with WebConsole with DefaultBootstrap
     val prontoForm = form {
       inputText(form2("name")) + inputText(form2("age"), '_showConstraints -> false)
     }
+    
+    // buttons and links
+    
     //println("left", prontoForm.toString)
     println("right", "here are some instructions")
     promptTo("left", form2) { form3 =>
@@ -221,28 +226,3 @@ trait TestScript2 extends AkkaProntoScript with WebConsole with DefaultBootstrap
     } */
   }
 }
-
-// experimental stuff
-sealed abstract class CustomOutputStyle
-case class Sidebar(height: Int) extends CustomOutputStyle
-case class North(width: Int) extends CustomOutputStyle
-case class South(width: Int) extends CustomOutputStyle
-// debug window?
-// seems like debug msgs should be inline
-// instead there should be separate windows that have their own interaction threads
-// and certainly there should be asynchrony mechanisms that allow inter-communication among different threads / windows
-
-sealed abstract class OutputTarget2
-case object Stdout2 extends OutputTarget2
-case object StdinPrompt2 extends OutputTarget2
-case object Stderr2 extends OutputTarget2
-case class Custom(name: String) extends OutputTarget2
-
-sealed abstract class TextOutputTargets
-case object Stdout extends TextOutputTargets
-case object Stderr extends TextOutputTargets
-
-class TextConsole {
-  type OutputTarget = TextOutputTargets
-}
-
