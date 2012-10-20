@@ -90,7 +90,8 @@ trait WebConsole extends ConsoleLike {
   def readForm[A](form: Form[A]): Future[A] = {
     // TOOD: errors especially parse errors should just become form errors that the user can re-do
     // rather than failing out the whole script
-    read[String] map { x =>
+    read[String] map { socketMessage =>
+      val x = getFormData(socketMessage)
       form.bind(FormUrlEncodedParser.parse(x, "utf-8").mapValues(_.headOption.getOrElse(""))).get
     }
   }
@@ -102,7 +103,11 @@ trait WebConsole extends ConsoleLike {
    */
   def promptTo[A](target: OutputTarget, form: Form[A])(html: Form[A] => Html): Future[A] = {
     printTo(target, html(form).toString)
-    read[String] flatMap { formData =>
+    read[String] flatMap { socketMessage =>
+      Logger.info(socketMessage)
+      val socketMessageJson = Json.parse(socketMessage)
+      val formData = (socketMessageJson \ "data").as[String]
+      Logger.info(formData)
       val formResult = form.bind(FormUrlEncodedParser.parse(formData, "utf-8").mapValues(_.headOption.getOrElse("")))
       if (formResult.hasErrors || formResult.hasGlobalErrors) {
         // TODO: clear - replace div or just replace form content?
@@ -111,6 +116,12 @@ trait WebConsole extends ConsoleLike {
         Future(formResult.get)
       }
     }
+  }
+  
+  private[this] def getFormData(socketMessage: String) = {
+    val socketMessageJson = Json.parse(socketMessage)
+    val formData = (socketMessageJson \ "data").as[String]
+    formData
   }
   
   //def createWindow// ?
@@ -204,18 +215,14 @@ trait TestScript2 extends AkkaProntoScript with WebConsole with BootstrapHtmlHel
     
     //println("left", prontoForm.toString)
     println("right", "here are some instructions")
-    promptTo("left", form2) { form3 =>
+    val (name, age) = promptTo("left", form2) { form3 =>
         val prontoForm = form {
           inputText(form3("name")) + inputText(form3("age"), '_showConstraints -> false)
         }
         Html(prontoForm.toString)
-    }
-    
-    while(true) {
-    val(name, age) = readForm(form2)()
+    }()
     
     println("right", "<b>we</b> got name = " + name + " and age = " + age)
-    }
 
     /*
     Future.flow {

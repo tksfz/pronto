@@ -79,7 +79,6 @@ class RunActor extends Actor {
       sender ! Connected(enumerator)
     }
     case Message(msg) => {
-      this.out.push(msg)
       this.futureQueue.put(msg)(context.dispatcher)
     }
   }

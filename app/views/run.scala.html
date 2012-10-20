@@ -41,7 +41,13 @@ yo yo yo
         // Attach form handler
         $('.prontoForm').off('submit'); // just a hack for now
         $('.prontoForm').submit(function() {
-            chatSocket.send($(this).serialize());
+            var message = {
+                target: $(this).id,
+                type: "form",
+                event: "submit",
+                data: $(this).serialize()
+            };
+            chatSocket.send($.toJSON(message));
             return false;
         });
     };
