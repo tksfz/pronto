@@ -13,6 +13,7 @@ import play.api.mvc.Call
 import play.api.libs.json.Json
 import akka.dispatch.Promise
 import play.api.templates.HtmlFormat
+import scala.util.Random
 
 trait ProntoScript {
   self: ConsoleLike =>
@@ -97,9 +98,23 @@ trait WebConsole extends ConsoleLike {
     printraw(target, html.toString)
   }
   
-  def printraw(target: String, str: String) {
+  def printReplace(target: String, html: Html) {
+    printrawreplace(target, html.toString)
+  }
+  
+  private[this] def printraw(target: String, str: String) {
+    // TODO: if target is default let client-side choose stdout or something
     val json = Json.toJson(Map("target" -> target, "html" -> str))
     out.push(Json.stringify(json))
+  }
+  
+  private[this] def printrawreplace(target: String, str: String) {
+    val json = Json.toJson(Map("target" -> target, "method" -> "replace", "html" -> str))
+    out.push(Json.stringify(json))
+  }
+  
+  def clear(target: String = Stdout) {
+    printrawreplace(target, "")
   }
   
   override def read[A] = {
@@ -143,22 +158,35 @@ trait WebConsole extends ConsoleLike {
    * Prompt shows a form, waits for input, validates the result, re-shows with errors if necessary
    * until the input is valid
    * optional target
+   * 
+   * we need a simpler version of this for non-validating cases
    */
   def promptTo[A](target: OutputTarget, form: Form[A])(html: Form[A] => Html): Future[A] = {
-    printTo(target, html(form).toString)
-    read[String] flatMap { socketMessage =>
-      Logger.info(socketMessage)
-      val socketMessageJson = Json.parse(socketMessage)
-      val formData = (socketMessageJson \ "data").as[String]
-      Logger.info(formData)
-      val formResult = form.bind(FormUrlEncodedParser.parse(formData, "utf-8").mapValues(_.headOption.getOrElse("")))
-      if (formResult.hasErrors || formResult.hasGlobalErrors) {
-        // TODO: clear - replace div or just replace form content?
-        promptTo(target, formResult)(html)
-      } else {
-        Future(formResult.get)
+    def promptToHelper(target: OutputTarget, form: Form[A])(html: Form[A] => Html): Future[A] = {
+      printReplace(target, html(form))
+      read[String] flatMap { socketMessage =>
+        Logger.info(socketMessage)
+        val socketMessageJson = Json.parse(socketMessage)
+        val formData = (socketMessageJson \ "data").as[String]
+        Logger.info(formData)
+        val formResult = form.bind(FormUrlEncodedParser.parse(formData, "utf-8").mapValues(_.headOption.getOrElse("")))
+        if (formResult.hasErrors || formResult.hasGlobalErrors) {
+          promptToHelper(target, formResult)(html)
+        } else {
+          Future(formResult.get)
+        }
       }
     }
+    
+    // This allows us to re-prompt without the client-side having to compute
+    // innerHTML of the form html we give it
+    val containerId = "formcontainer_" + Random.nextInt(Int.MaxValue)
+    print(target, Html("<div id='" + containerId + "'></div>"))
+    promptToHelper(containerId, form)(html)
+  }
+  
+  def prompt[A](form: Form[A])(html: Form[A] => Html): Future[A] = {
+    promptTo(Stdout, form)(html)
   }
   
   private[this] def getFormData(socketMessage: String) = {
@@ -188,9 +216,17 @@ trait HtmlHelper {
     
   import views.html.helper
   
-  def form(args: (Symbol, String)*)(body: Html) = helper.form(Call("GET", "#"), args: _*) { body + Html(<input type="submit"/>.toString)}
+  def form(args: (Symbol, String)*)(body: Html) = {
+    helper.form(Call("GET", "#"), args: _*) {
+      body
+    }
+  }
   
   def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
+  
+  def inputSubmit(args: (Symbol, String)*): Html = {
+    tag("input", (args :+ 'type -> "submit"): _*)()
+  }
   
   private[this] def tag(tagName: String, args: (Symbol, String)*)(body: Html = Html("")) = {
     Html("<" + tagName + " " + argsToAttributes(args: _*) + ">") + body + Html("</" + tagName+ ">")
@@ -241,6 +277,7 @@ trait HtmlHelper {
   def htmlescape(str: String): Html = {
     HtmlFormat.escape(str)
   }
+  
 }
 
 trait BootstrapHtmlHelper extends HtmlHelper {
@@ -253,6 +290,7 @@ trait BootstrapHtmlHelper extends HtmlHelper {
   // use bootstrap typeclass
   override def inputText(field: play.api.data.Field, args: (Symbol, Any)*) = helper.inputText(field, args: _* )
   
+  // override some methods to attach standard bootstrap classes like btn etc.
 }
 
 trait TestScript extends AkkaProntoScript with WebConsole with HtmlHelper {
@@ -277,17 +315,19 @@ trait TestScript extends AkkaProntoScript with WebConsole with HtmlHelper {
 trait TestScript2 extends AkkaProntoScript with WebConsole with BootstrapHtmlHelper {
   // we want auto-scrolling to bottom
   override def script = {
+    // too much html code here no?
     print(div('class -> "container") { row {
       span('id -> "left", 'class -> "span4 box", 'style -> "height: 200px")() +
       span('id -> "right", 'class -> "span6 box", 'style -> "height: 200px; overflow: auto")()
     } })
 
-    val form2 = Form(tuple("name" -> text, "age" -> number))
+    val form = Form(tuple("name" -> text, "age" -> number))
     
     println("right", "here are some instructions")
-    val (name, age) = promptTo("left", form2) { form3 =>
+    val (name, age) = promptTo("left", form) { form =>
         prontoform() {
-          inputText(form3("name")) + inputText(form3("age"), '_showConstraints -> false)
+          inputText(form("name")) + inputText(form("age"), '_showConstraints -> false) +
+          inputSubmit('value -> "Submit Yo", 'class -> "btn")
         }
     }()
     

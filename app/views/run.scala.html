@@ -34,15 +34,21 @@ yo yo yo
     });
     ws.send('message', "hi there"); */
     
+    // Receive and handle socket messages
     chatSocket.onmessage = function(event) {
-        var json = jQuery.parseJSON(event.data);
+        var json = $.parseJSON(event.data);
         if (!json.target) json.target = "stdout";
-        $('#' + json.target).append(json.html);
+        if (json.method && json.method == "replace") {
+            $('#' + json.target).html(json.html);
+        } else {
+            $('#' + json.target).append(json.html);
+        }
     };
     chatSocket.onopen = function(event) {
         //chatSocket.send("now here we go");
     };
     
+    // Send events back to server via socket
     var prontoListener = function(event) {
         var message = {
             target: event.target.id,
