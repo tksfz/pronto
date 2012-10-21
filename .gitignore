@@ -7,3 +7,7 @@ tmp
 dist
 .target
 bin
+.cache
+.project
+.classpath
+.settings
