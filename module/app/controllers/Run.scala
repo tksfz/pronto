@@ -6,33 +6,6 @@ import play.api.libs.iteratee._
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
 
-object Run extends Controller {
-  
-  def index = Action {
-    Ok(views.html.run())
-  }
-
-  import akka.actor._
-  import akka.pattern.ask
-      
-  import akka.util.duration._
-  import play.api.libs.concurrent._
-  implicit val timeout = akka.util.Timeout(1 second)
-  
-  def wsActor = WebSocket.async[String] {
-    request =>
-      val actor = Akka.system.actorOf(Props[RunActor])
-      (actor ? Start()).asPromise map {
-        case Connected(out) =>
-          val iteratee = Iteratee.foreach[String] {
-            event =>
-              actor ! Message(event)
-          }
-          (iteratee, out)
-      }
-  }
-}
-
 import akka.actor._
 import akka.pattern.ask
 
@@ -41,19 +14,23 @@ case class Message(msg: String)
 case class Connected(out: PushEnumerator[String]) 
 
 object RunActor {
-  lazy val default = {
-    val runActor = Akka.system.actorOf(Props[RunActor])
-    runActor
-  }
+  import akka.actor._
+  import akka.pattern.ask
+      
+  import akka.util.duration._
+  import play.api.libs.concurrent._
+  implicit val timeout = akka.util.Timeout(1 second)
   
-  def join(out: PushEnumerator[String]) = {
-    default ! Start()
-    //default ? Start(out)
-    val iteratee = Iteratee.foreach[String] {
-      event =>
-        default ! Message(event)
+  def join() = {
+    val actor = Akka.system.actorOf(Props[RunActor])
+    (actor ? Start()).asPromise map {
+      case Connected(out) =>
+        val iteratee = Iteratee.foreach[String] {
+          event =>
+            actor ! Message(event)
+        }
+        (iteratee, out)
     }
-    (iteratee, out)
   } 
 }
 
