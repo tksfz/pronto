@@ -18,7 +18,6 @@ import scala.util.Random
 trait ProntoScript {
   self: ConsoleLike =>
     
-  // TODO: trickery to make the body of the class the script itself
   def run() 
 }
 
