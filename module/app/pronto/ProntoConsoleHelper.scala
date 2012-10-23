@@ -73,6 +73,7 @@ trait ProntoConsoleHelper {
    * This is the equivalent to something like a "readLine()" call - just wait for the user
    * to hit Enter or in this case click a button.
    */
+  // TODO: provide pre-apply'ed versions readClick()()
   def readClick(/*elementId: String*/)(implicit context: ProntoContext): Future[Unit] = {
     // TODO: make this read[JsValue] using the implicit formatter nice
     read flatMap { socketMessage =>

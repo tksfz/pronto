@@ -5,8 +5,9 @@ import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
 import org.tksfz.pronto._
+import play.api.templates.Html
 
-object Application extends Controller with ProntoConsoleHelper with HtmlHelper {
+object Application extends Controller with ProntoConsoleHelper with HtmlHelper with BootstrapHtmlHelper {
   
   def index = Action {
     Ok(views.html.run())
@@ -26,5 +27,34 @@ object Application extends Controller with ProntoConsoleHelper with HtmlHelper {
     val (name, age) = prompt(form) { form => prontoform() { inputText(form("name")) + inputText(form("age")) + inputSubmit('value -> "Hit me!") } }(context)()
     println("name = " + name + ", age = " + age)
   }
+  
+  def ws2 = ProntoWebSocket { implicit context =>
+    // too much html code here no?
+    print(div('class -> "container") { row {
+      span('id -> "left", 'class -> "span4 box", 'style -> "height: 200px")() +
+      span('id -> "right", 'class -> "span6 box", 'style -> "height: 200px; overflow: auto")()
+    } })
+
+    val form = Form(tuple("name" -> text, "age" -> number))
+    
+    println("right", "here are some instructions")
+    val (name, age) = promptTo("left", form) { form =>
+        prontoform() {
+          inputText(form("name")) + inputText(form("age"), '_showConstraints -> false) +
+          inputSubmit('value -> "Submit Yo", 'class -> "btn")
+        }
+    }(context)()
+    
+    println("right", Html("<b>we</b> got name = ") + htmlescape(name) + Html(" and age = " + age))
+    println("right", "to continue click the button:")
+    println("right", prontobutton() { Html("Hit Me!") })
+   
+    // We need to distinguish buttons using both readClick("thisbutton") or whichButton = readClick
+    readClick()(context)()
+    
+    println("right", "alright now we're rolling")
+  }
+  
+  // TODO: simple poll example
   
 }
