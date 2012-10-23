@@ -1,11 +1,11 @@
-package controllers
+package org.tksfz.pronto
 
 import akka.dispatch.Future
-import scala.actors.threadpool.LinkedBlockingQueue
 import akka.dispatch.Promise
 import play.api.Logger
+import scala.actors.threadpool.LinkedBlockingQueue
 
-class FutureQueue[T] {
+private[pronto] class FutureQueue[T] {
   
   private[this] val puts = new LinkedBlockingQueue[T]()
   

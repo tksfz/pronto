@@ -19,7 +19,7 @@ yo yo yo
 </div>
 
 <script src="http://jquery-json.googlecode.com/files/jquery.json-2.2.min.js"></script>
-<script src="@routes.Assets.at("javascripts/jquery.websocket-0.0.1.js")" type="text/javascript"></script>
+<!-- <script src="@routes.Assets.at("javascripts/jquery.websocket-0.0.1.js")" type="text/javascript"></script> -->
 <script>
     var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
     var chatSocket = new WS("ws://localhost:9000/ws")
@@ -63,17 +63,5 @@ yo yo yo
     $('#stdout').on("submit", ".prontoInput", prontoListener);
     $('#stdout').on("click", ":not(form).prontoInput", prontoListener);
 </script>
-<!--
-<form id="form" action="#">
-    <input type="text" name="name"/>
-    <input type="text" name="age"/>
-    <input type="submit"/>
-</form>
-<script>
-    $('#form').submit(function() {
-        chatSocket.send($(this).serialize());
-        return false;
-    });
-</script> -->
 
 }
