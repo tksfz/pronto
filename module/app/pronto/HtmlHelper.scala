@@ -1,23 +1,10 @@
-package controllers
+package org.tksfz.pronto
 
-import play.api.libs.iteratee._
-import akka.dispatch.Future
-import akka.dispatch.Future
 import play.api.data._
 import play.api.data.Forms._
-import play.core.parsers.FormUrlEncodedParser
-import play.api.Logger
-import scala.util.continuations.cps
 import play.api.templates.Html
 import play.api.mvc.Call
-import play.api.libs.json.Json
-import akka.dispatch.Promise
 import play.api.templates.HtmlFormat
-import scala.util.Random
-import akka.dispatch.MessageDispatcher
-import play.api.libs.concurrent.Akka
-import play.api.Application
-
 
 /**
  * Helper methods to generate HTML from code.  Scripts won't generally use views.  Instead
