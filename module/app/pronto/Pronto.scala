@@ -7,25 +7,25 @@ import akka.dispatch.{Future, Promise, MessageDispatcher}
 import play.api.Application
 import play.api.Logger
 import play.api.mvc.{WebSocket, RequestHeader}
+import play.api.libs.json.JsValue
 
 package object pronto {
   type ProntoInlineScript = ProntoContext => Unit @cps[Future[Any]]
 }
 
 package pronto {
-  case class ProntoContext(out: PushEnumerator[String], in: FutureQueue[String], dispatcher: MessageDispatcher)
+  case class ProntoContext(out: PushEnumerator[JsValue], in: FutureQueue[JsValue], dispatcher: MessageDispatcher)
   
   object ProntoWebSocket {    
-    def apply(script: ProntoInlineScript)(implicit app: Application): WebSocket[String] = apply(new ProntoInlineScriptWrapper(script))
+    def apply(script: ProntoInlineScript)(implicit app: Application): WebSocket[JsValue] = apply(new ProntoInlineScriptWrapper(script))
   
     // TODO: [JsValue]
-    def apply(script: ProntoRunnable)(implicit app: Application) = WebSocket.using[String] { request =>
+    def apply(script: ProntoRunnable)(implicit app: Application) = WebSocket.using[JsValue] { request =>
       // TODO: pass request along as well
-      val futureQueue = new FutureQueue[String]
-      lazy val enumerator: PushEnumerator[String] = Enumerator.imperative[String](
-          onStart = { script.run(context) })
-      lazy val context = ProntoContext(enumerator, futureQueue, Akka.system.dispatcher)
-      val iteratee = Iteratee.foreach[String] { event => futureQueue.put(event)(Akka.system.dispatcher) }
+      val futureQueue = new FutureQueue[JsValue]
+      lazy val enumerator = Enumerator.imperative[JsValue](onStart = { script.run(context) })
+      lazy val context: ProntoContext = ProntoContext(enumerator, futureQueue, Akka.system.dispatcher)
+      val iteratee = Iteratee.foreach[JsValue] { event => futureQueue.put(event)(Akka.system.dispatcher) }
       (iteratee, enumerator)
     }
   }

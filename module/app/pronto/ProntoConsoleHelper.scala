@@ -7,6 +7,7 @@ import play.api.Logger
 import akka.dispatch.{Future, Promise}
 import play.api.libs.json.Json
 import play.core.parsers.FormUrlEncodedParser
+import play.api.libs.json.JsValue
 
 trait ProntoConsoleHelper {    
   def print(str: String)(implicit context: ProntoContext) {
@@ -44,21 +45,16 @@ trait ProntoConsoleHelper {
   private[this] def printraw(target: String, str: String)(implicit context: ProntoContext) {
     // TODO: if target is default let client-side choose stdout or something
     val json = Json.toJson(Map("target" -> target, "html" -> str))
-    context.out.push(Json.stringify(json))
+    context.out.push(json)
   }
   
   private[this] def printrawreplace(target: String, str: String)(implicit context: ProntoContext) {
     val json = Json.toJson(Map("target" -> target, "method" -> "replace", "html" -> str))
-    context.out.push(Json.stringify(json))
+    context.out.push(json)
   }
   
-  def read[A](implicit context: ProntoContext) = {
-    val future = context.in.getNextFuture(context.dispatcher)
-    // convert string or whatever to A
-    future map {
-      x =>
-        x.asInstanceOf[A]
-    }
+  private[this] def read(implicit context: ProntoContext) = {
+    context.in.getNextFuture(context.dispatcher)
   }
   
   // TODO: just as we have multiple output channels identified by div id
@@ -67,7 +63,7 @@ trait ProntoConsoleHelper {
   def readForm[A](form: Form[A])(implicit context: ProntoContext): Future[A] = {
     // TOOD: errors especially parse errors should just become form errors that the user can re-do
     // rather than failing out the whole script
-    read[String] map { socketMessage =>
+    read map { socketMessage =>
       val x = getFormData(socketMessage)
       form.bind(FormUrlEncodedParser.parse(x, "utf-8").mapValues(_.headOption.getOrElse(""))).get
     }
@@ -79,9 +75,8 @@ trait ProntoConsoleHelper {
    */
   def readClick(/*elementId: String*/)(implicit context: ProntoContext): Future[Unit] = {
     // TODO: make this read[JsValue] using the implicit formatter nice
-    read[String] flatMap { socketMessage =>
-      val socketMsgJson = Json.parse(socketMessage)
-      if ((socketMsgJson \ "event").as[String] == "click") {
+    read flatMap { socketMessage =>
+      if ((socketMessage \ "event").as[String] == "click") {
         Promise.successful(())(context.dispatcher)
       } else {
         readClick()
@@ -99,10 +94,8 @@ trait ProntoConsoleHelper {
   def promptTo[A](target: String, form: Form[A])(html: Form[A] => Html)(implicit context: ProntoContext): Future[A] = {
     def promptToHelper(target: String, form: Form[A])(html: Form[A] => Html): Future[A] = {
       printReplace(target, html(form))
-      read[String] flatMap { socketMessage =>
-        Logger.info(socketMessage)
-        val socketMessageJson = Json.parse(socketMessage)
-        val formData = (socketMessageJson \ "data").as[String]
+      read flatMap { socketMessage =>
+        val formData = (socketMessage \ "data").as[String]
         Logger.info(formData)
         val formResult = form.bind(FormUrlEncodedParser.parse(formData, "utf-8").mapValues(_.headOption.getOrElse("")))
         if (formResult.hasErrors || formResult.hasGlobalErrors) {
@@ -129,9 +122,8 @@ trait ProntoConsoleHelper {
     promptTo("stdout", form)(html)
   }
   
-  private[this] def getFormData(socketMessage: String) = {
-    val socketMessageJson = Json.parse(socketMessage)
-    val formData = (socketMessageJson \ "data").as[String]
+  private[this] def getFormData(socketMessage: JsValue) = {
+    val formData = (socketMessage \ "data").as[String]
     formData
   }
 
