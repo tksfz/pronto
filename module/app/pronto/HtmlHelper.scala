@@ -7,10 +7,10 @@ import play.api.mvc.Call
 import play.api.templates.HtmlFormat
 
 /**
- * Helper methods to generate HTML from code.  Scripts won't generally use views.  Instead
+ * Helper methods to generate HTML from code.  Scripts won't typically use views.  Instead
  * they'll use an imperative style where they simply print HTML.
  * 
- * These methods all return Play's Html type.  We also re-use some existing html helpers provided
+ * These methods all return Play's Html type.  We also incorporate some existing html helpers provided
  * by Play.
  * 
  * prontoform
