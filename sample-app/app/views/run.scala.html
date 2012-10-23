@@ -18,10 +18,8 @@ yo yo yo
 <div id="stdout">
 </div>
 
-<!-- <script src="http://jquery-json.googlecode.com/files/jquery.json-2.2.min.js"></script> -->
-<!-- <script src="@routes.Assets.at("javascripts/jquery.websocket-0.0.1.js")" type="text/javascript"></script> -->
 <script>
-    function startWebSocket(divId, url) {
+    function startProntoWebSocket(divId, url) {
         var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
         var chatSocket = new WS(url);
         
@@ -55,7 +53,7 @@ yo yo yo
         $('#' + divId).on("click", ":not(form).prontoInput", prontoListener);
     }
 
-    startWebSocket("stdout", "ws://localhost:9000/ws");
+    startProntoWebSocket("stdout", "ws://localhost:9000/ws");
 </script>
 
 }
