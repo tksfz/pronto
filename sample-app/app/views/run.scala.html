@@ -13,55 +13,14 @@
 }
 </style>
 
-yo yo yo
+Hi there
 
-<div id="stdout" class="stdout">
-</div>
+<div id="stdout"></div>
 
-<script src="http://jquery-json.googlecode.com/files/jquery.json-2.2.min.js"></script>
-<!-- <script src="@routes.Assets.at("javascripts/jquery.websocket-0.0.1.js")" type="text/javascript"></script> -->
+<script src="@routes.Assets.at("javascripts/pronto.js")" type="text/javascript"></script>
+
 <script>
-    var WS = window['MozWebSocket'] ? MozWebSocket : WebSocket
-    var chatSocket = new WS("ws://localhost:9000/ws")
-    /*
-    var ws = $.websocket("ws://localhost:9000/ws", {
-        events: {
-            message: function(event) {
-                alert('hi');
-                $('#content').append(event.data + "<br/>");
-            }
-        }
-    });
-    ws.send('message', "hi there"); */
-    
-    // Receive and handle socket messages
-    chatSocket.onmessage = function(event) {
-        var json = $.parseJSON(event.data);
-        if (!json.target) json.target = "stdout";
-        if (json.method && json.method == "replace") {
-            $('#' + json.target).html(json.html);
-        } else {
-            $('#' + json.target).append(json.html);
-        }
-    };
-    chatSocket.onopen = function(event) {
-        //chatSocket.send("now here we go");
-    };
-    
-    // Send events back to server via socket
-    var prontoListener = function(event) {
-        var message = {
-            target: event.target.id,
-            type: event.target.tagName,
-            event: event.type,
-            data: $(this).serialize()
-        };
-        chatSocket.send($.toJSON(message));
-        return false;
-    };
-    
-    $('#stdout').on("submit", ".prontoInput", prontoListener);
-    $('#stdout').on("click", ":not(form).prontoInput", prontoListener);
+    startProntoWebSocket("stdout", "ws://localhost:9000/ws");
 </script>
 
 }
