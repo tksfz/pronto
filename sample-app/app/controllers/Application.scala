@@ -4,12 +4,15 @@ import play.api._
 import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
+import org.tksfz.pronto._
 
-object Application extends Controller with ProntoScriptApi with HtmlHelper {
+object Application extends Controller with ProntoConsoleHelper with HtmlHelper {
   
   def index = Action {
     Ok(views.html.run())
   }
+  
+  import play.api.Play.current
   
   // TODO: add a variant where the script can be initiated with some request args
   // coming from some initiating form
