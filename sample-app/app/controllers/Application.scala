@@ -9,7 +9,7 @@ import play.api.templates.Html
 
 object Application extends Controller with ProntoConsoleHelper with HtmlHelper with BootstrapHtmlHelper {
   
-  def index = Action {
+  def index = Action { implicit request =>
     Ok(views.html.run())
   }
   
@@ -22,7 +22,7 @@ object Application extends Controller with ProntoConsoleHelper with HtmlHelper w
   // we should also support these as method args, and allow the script to throw up
   // an error that plays well with the usual REST-style handlers
   def wsActor2 = ProntoWebSocket { implicit context =>
-    println("hello")
+    println("Enter your name and age:")
     val form = Form(tuple("name" -> text, "age" -> number))
     val (name, age) = prompt(form) { form => prontoform() { inputText(form("name")) + inputText(form("age")) + inputSubmit('value -> "Hit me!") } }(context)()
     println("name = " + name + ", age = " + age)
