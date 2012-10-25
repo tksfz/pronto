@@ -1,6 +1,6 @@
 # Pronto - dataflow scripting for Play
 
-Pronto is a module for Play Framework 2.0.  It adds the ability to write interactive "scripts" inside your controllers.  The scripts can render HTML UI to the page and handle forms.  They are written in a compact, imperative style.  It uses WebSockets + Iteratees + Akka dataflow concurrency.  By combining these, we can write _non-blocking_ scripts in an imperative style.  For example:
+Pronto is a module for Play Framework 2.0.  It adds the ability to write interactive "scripts" inside your controllers.  The scripts can render HTML UI to the page and handle forms.  They are written in a compact, imperative style.  Pronto uses WebSockets + Iteratees + Akka dataflow concurrency.  By combining these, we can write _non-blocking_ scripts in an imperative style.  For example:
 
 In your controller:
 
@@ -13,14 +13,7 @@ In your controller:
       }
     }
 
-and in your view:
-
-    <script src="@routes.Assets.at("javascripts/pronto.js")" type="text/javascript"></script>
-
-    <div id="stdout"></div>
-    <script>startProntoWebSocket("stdout", "@controllers.routes.Application.wsHello.webSocketURL()");</script>
-
-You can see a [full example](https://github.com/tksfz/pronto/tree/master/sample-app) in the repo.
+You can see a [full example](https://github.com/tksfz/pronto/tree/master/sample-app) in the repo and more documentation on the [wiki](https://github.com/tksfz/pronto/wiki).
 
 Pronto is geared towards quickly hacking small scripts when you don't want to fuss with building a complex UI or MVC.  Potential use cases include:  internal tools, devops tasks, bots (part of the inspiration comes from GitHub's Hubot).  It also is meant to demonstrate the flexibility of the Play framework.
 
