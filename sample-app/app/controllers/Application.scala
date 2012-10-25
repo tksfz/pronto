@@ -21,7 +21,7 @@ object Application extends Controller with ProntoConsoleHelper with HtmlHelper w
   //  with something like command-line arguments
   // we should also support these as method args, and allow the script to throw up
   // an error that plays well with the usual REST-style handlers
-  def wsActor2 = ProntoWebSocket { implicit context =>
+  def ws = ProntoWebSocket { implicit context =>
     println("Enter your name and age:")
     val form = Form(tuple("name" -> text, "age" -> number))
     val (name, age) = prompt(form) { form => prontoform() { inputText(form("name")) + inputText(form("age")) + inputSubmit('value -> "Hit me!") } }(context)()
