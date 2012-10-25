@@ -1,6 +1,6 @@
 # Pronto - dataflow scripting for Play
 
-Pronto is a module for Play Framework 2.0.  It adds the ability to write interactive "scripts" inside your controllers.  The scripts can render HTML UI to the page and handle forms.  They are written in a compact, imperative style.  Yet the scripts are _non-blocking_ .  Pronto leverages Play's support for WebSockets + Iteratees + Akka dataflow concurrency.  For example:
+Pronto is a module for Play Framework 2.0.  It adds the ability to write interactive "scripts" inside your controllers.  The scripts can render HTML UI to the page and handle forms.  They are written in a compact, imperative style.  It uses WebSockets + Iteratees + Akka dataflow concurrency.  By combining these, we can write _non-blocking_ scripts in an imperative style.  For example:
 
 In your controller:
 
