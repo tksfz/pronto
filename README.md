@@ -27,7 +27,7 @@ For now, please just use the [play mailing list](https://groups.google.com/forum
 
 ## Status
 
-This is an early release to demonstrate the general idea.  The API _will_ change.
+This is an early release to demonstrate the general idea.  There are still a lot of rough edges.  The API _will_ change.
 
 ## Contact
 
